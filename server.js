@@ -4,9 +4,12 @@ const cors = require('cors');
 const connectDB = require('./config/db');
 const loadInitialData = require('./utils/loadInitialData');
 const mongoose = require('mongoose');
-
+const resetInitialData = require('./utils/resetInitialData');
+const { getTeamsWithFirstEleven, getTeamsWithFirstElevenPretty } = require('./utils/statistics');
+const calculateTeamStrength = require('./utils/calculateTeamStrengths');
 const app = express();
 
+const mode = 1; // 0: no data, 1: initiate data
 // Middleware
 app.use(express.json()); // JSON desteği
 app.use(cors()); // CORS desteği
@@ -17,8 +20,15 @@ const startServer = async () => {
     // Veritabanına bağlan
     await connectDB();
 
-    // Başlangıç verilerini yükle
-    await loadInitialData();
+    if (mode === 0) {
+      await resetInitialData();
+    }
+    // else if (mode === 3) await getTeamsWithFirstEleven();
+
+    else {
+      await loadInitialData();
+    }
+
 
     // Sunucuyu başlat
     const PORT = process.env.PORT || 5001;
@@ -58,3 +68,26 @@ app.use('/api/achievements', require('./routes/achievement')); // Başarı rotas
 
 // Sunucuyu başlat
 startServer();
+
+
+
+
+// (async () => {
+//   try {
+//     const teamsWithFirstElevenPretty = await getTeamsWithFirstElevenPretty();
+//     console.log('Teams with First Eleven:', teamsWithFirstElevenPretty);
+//   } catch (error) {
+//     console.error('Error fetching teams with first eleven:', error.message);
+//   }
+// })();
+
+
+
+// (async () => {
+//   try {
+//     const strengths = await calculateTeamStrength();
+//     console.log('Team Strengths:', strengths);
+//   } catch (error) {
+//     console.error('Error:', error.message);
+//   }
+// })();

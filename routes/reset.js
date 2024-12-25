@@ -7,6 +7,9 @@ const Standing = require('../models/Standing');
 const MatchResult = require('../models/MatchResult');
 const Goal = require('../models/Goal');
 const Achievement = require('../models/Achievement');
+const Training = require('../models/Training');
+const Sponsor = require('../models/Sponsor');
+const Stadium = require('../models/Stadium');
 const loadInitialData = require('../utils/loadInitialData');
 
 
@@ -40,6 +43,15 @@ router.delete('/', async (req, res) => {
 
     await Achievement.deleteMany({});
     console.log('All achievements deleted.');
+
+    await Training.deleteMany({});
+    console.log('All training deleted.');
+
+    await Sponsor.deleteMany({});
+    console.log('All sponsors deleted.');
+
+    await Stadium.deleteMany({});
+    console.log('All stadiums deleted.');
 
     loadInitialData(); // Yeni verileri yükle
     console.log('All data has been reset ');

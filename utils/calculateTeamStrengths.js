@@ -1,50 +1,99 @@
 const Team = require('../models/Team');
 const Player = require('../models/Player');
 
-const calculateTeamStrengths = async () => {
+/**
+ * Calculate the contribution of a player based on their stats, position, and factors.
+ * @param {Object} player - The player object.
+ * @returns {Object} - Attack and defense contributions of the player.
+ */
+const calculatePlayerContribution = (player) => {
+  const contributionFactor = (player.condition / 100) * (player.form / 10);
+  let attack = 0;
+  let defense = 0;
+
+  switch (player.position) {
+    case 'Goalkeeper':
+      defense += player.goalkeeper * contributionFactor;
+      break;
+    case 'Defence':
+      defense += player.defense * 1.2 * contributionFactor;
+      attack += player.attack * 0.2 * contributionFactor;
+      break;
+    case 'Midfield':
+      attack += player.attack * 1 * contributionFactor;
+      defense += player.defense * 1 * contributionFactor;
+      break;
+    case 'Forward':
+      attack += player.attack * 1.5 * contributionFactor;
+      defense += player.defense * 0.1 * contributionFactor;
+      break;
+    default:
+      console.warn(`Unknown position for player ${player.name}`);
+      break;
+  }
+
+  return { attack, defense };
+};
+
+/**
+ * Calculate and return team strengths based on their first eleven players.
+ * @returns {Array} - Array of team strengths including attack and defense strengths.
+ */
+const calculateTeamStrength = async () => {
   try {
-    const teams = await Team.find();
+    const teams = await Team.find().populate({
+      path: 'playersInFirstEleven',
+      select: 'name position attack defense goalkeeper condition form',
+    });
+
+    if (!teams.length) {
+      console.log('No teams found in the database.');
+      return [];
+    }
+
+    const teamStrengths = [];
 
     for (const team of teams) {
-      const players = await Player.find({ team: team._id });
+      const firstEleven = team.playersInFirstEleven;
 
-      // En iyi 6 defans oyuncusunu seç
-      const topDefenders = players
-        .sort((a, b) => b.defense - a.defense)
-        .slice(0, 6)
-        .reduce((sum, player) => sum + player.defense, 0);
+      if (!firstEleven.length) {
+        console.log(`No first eleven players found for team ${team.name}.`);
+        continue;
+      }
 
-      // En iyi 5 atak oyuncusunu seç
-      const topAttackers = players
-        .sort((a, b) => b.attack - a.attack)
-        .slice(0, 5)
-        .reduce((sum, player) => sum + player.attack, 0);
+      let totalAttackPower = 0;
+      let totalDefensePower = 0;
 
-      const remainingDefense = players
-        .slice(6)
-        .reduce((sum, player) => sum + player.defense, 0);
-
-      const remainingAttack = players
-        .slice(5)
-        .reduce((sum, player) => sum + player.attack, 0);
-
-      // Takım güçlerini hesapla
-      const defenseStrength = topDefenders * 3 + remainingDefense;
-      const attackStrength = topAttackers * 3.5 + remainingAttack;
-
-      // Takım güçlerini güncelle
-      await Team.findByIdAndUpdate(team._id, {
-        defenseStrength,
-        attackStrength,
+      firstEleven.forEach((player) => {
+        const { attack, defense } = calculatePlayerContribution(player);
+        totalAttackPower += attack;
+        totalDefensePower += defense;
       });
 
-      console.log(`Strengths updated for team: ${team.name}`);
+      // Scale power levels for realism
+      const scaledAttackPower = totalAttackPower / firstEleven.length;
+      const scaledDefensePower = totalDefensePower / firstEleven.length;
+
+      // Update the team's calculated strengths in the database
+      await Team.findByIdAndUpdate(team._id, {
+        attackStrength: Math.round(scaledAttackPower),
+        defenseStrength: Math.round(scaledDefensePower),
+      });
+
+      // Add the team's strengths to the results
+      teamStrengths.push({
+        teamName: team.name,
+        attackStrength: Math.round(scaledAttackPower),
+        defenseStrength: Math.round(scaledDefensePower),
+      });
     }
 
     console.log('All team strengths calculated successfully.');
+    return teamStrengths;
   } catch (error) {
     console.error('Error calculating team strengths:', error.message);
+    throw error;
   }
 };
 
-module.exports = calculateTeamStrengths;
+module.exports = calculateTeamStrength;

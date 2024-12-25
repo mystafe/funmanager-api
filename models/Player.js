@@ -37,6 +37,8 @@ const playerSchema = new mongoose.Schema({
   },
   age: { type: Number, required: true },
   team: { type: mongoose.Schema.Types.ObjectId, ref: 'Team', required: true, index: true },
+  isFirstEleven: { type: Boolean, default: false }, // İlk 11 oyuncusu
+  isMatchSquad: { type: Boolean, default: false }, // Maç kadrosu (18 kişi)
 });
 
 playerSchema.post('save', async function (doc, next) {
