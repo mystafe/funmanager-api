@@ -5,6 +5,10 @@ const Season = require('../models/Season');
 const Fixture = require('../models/Fixture');
 const Standing = require('../models/Standing');
 const MatchResult = require('../models/MatchResult');
+const Goal = require('../models/Goal');
+const Achievement = require('../models/Achievement');
+const loadInitialData = require('../utils/loadInitialData');
+
 
 
 const router = express.Router();
@@ -29,8 +33,18 @@ router.delete('/', async (req, res) => {
     console.log('All match results deleted.');
 
     await Standing.deleteMany({});
+    console.log('All standings deleted.');
 
-    res.json({ message: 'All data has been reset.' });
+    await Goal.deleteMany({});
+    console.log('All goals deleted.');
+
+    await Achievement.deleteMany({});
+    console.log('All achievements deleted.');
+
+    loadInitialData(); // Yeni verileri yükle
+    console.log('All data has been reset ');
+
+    res.json({ message: 'All data has been reset and reloaded.' });
   } catch (error) {
     console.error('Error resetting data:', error.message);
     res.status(500).json({ error: 'Failed to reset data.' });

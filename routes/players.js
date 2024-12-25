@@ -2,6 +2,7 @@ const express = require('express');
 const Player = require('../models/Player');
 const Season = require('../models/Season');
 const router = express.Router();
+const Goal = require('../models/Goal');
 
 // Tüm oyuncu istatistiklerini döner
 router.get('/stats', async (req, res) => {
@@ -53,26 +54,42 @@ router.get('/top-scorers', async (req, res) => {
 });
 
 // Aktif sezondaki gol kralı sıralamasını döner
-router.get('/top-scorers/active-season', async (req, res) => {
+router.get('/active-top-scorers', async (req, res) => {
   try {
     const activeSeason = await Season.findOne({ isCompleted: false });
+
     if (!activeSeason) {
       return res.status(404).json({ error: 'No active season found.' });
     }
 
+    // Tüm oyuncuları getir
     const players = await Player.find()
       .populate('team', 'name') // Takım bilgilerini getir
       .lean();
 
+    console.log('Active Season:', activeSeason);
+    console.log('Players Fetched:', players.length);
+    console.log('Players:', players);
+
     const topScorers = players
-      .map(player => ({
-        playerId: player._id,
-        name: player.name,
-        team: player.team.name,
-        totalGoals: player.goals.filter(goal => goal.season?.toString() === activeSeason._id.toString()).length,
-      }))
+      .map(player => {
+        const totalGoals = player.goals.filter(goal =>
+          goal.season?.toString() === activeSeason._id.toString()
+        ).length;
+
+        return {
+          playerId: player._id,
+          name: player.name,
+          team: player.team.name,
+          totalGoals,
+        };
+      })
       .filter(player => player.totalGoals > 0) // Sadece gol atan oyuncuları al
       .sort((a, b) => b.totalGoals - a.totalGoals); // Gol sayılarına göre sırala
+
+    if (!topScorers.length) {
+      return res.status(404).json({ error: 'No top scorers found for the active season.' });
+    }
 
     res.json({ topScorers });
   } catch (error) {
@@ -82,11 +99,12 @@ router.get('/top-scorers/active-season', async (req, res) => {
 });
 
 // Belirli bir sezondaki gol kralı sıralamasını döner
-router.get('/top-scorers/:seasonId', async (req, res) => {
-  const { seasonId } = req.params;
+router.get('/top-scorers/:seasonNumber', async (req, res) => {
+  const { seasonNumber } = req.params;
 
   try {
-    const season = await Season.findById(seasonId);
+    // Sezonu sezon numarasına göre bul
+    const season = await Season.findOne({ seasonNumber: parseInt(seasonNumber) });
     if (!season) {
       return res.status(404).json({ error: 'Season not found.' });
     }
@@ -100,7 +118,7 @@ router.get('/top-scorers/:seasonId', async (req, res) => {
         playerId: player._id,
         name: player.name,
         team: player.team.name,
-        totalGoals: player.goals.filter(goal => goal.season?.toString() === seasonId).length,
+        totalGoals: player.goals.filter(goal => goal.season?.toString() === season._id.toString()).length,
       }))
       .filter(player => player.totalGoals > 0) // Sadece gol atan oyuncuları al
       .sort((a, b) => b.totalGoals - a.totalGoals); // Gol sayılarına göre sırala

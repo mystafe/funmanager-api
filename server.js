@@ -52,7 +52,8 @@ app.use('/api/match', require('./routes/match')); // Maç rotası
 app.use('/api/alldata', require('./routes/allData')); // Oyuncu rotası
 app.use('/api/standings', require('./routes/standings')); // Puan durumu rotası
 app.use('/api/players', require('./routes/players')); // Oyuncu rotası
-
+app.use('/api/goals', require('./routes/goals')); // Gol rotası
+app.use('/api/achievements', require('./routes/achievement')); // Başarı rotası
 
 
 // Sunucuyu başlat

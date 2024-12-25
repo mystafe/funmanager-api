@@ -4,6 +4,8 @@ const router = express.Router();
 const Team = require('../models/Team');
 const Player = require('../models/Player');
 const Fixture = require('../models/Fixture');
+const { saveAchievements } = require('../utils/achievementUtils'); // saveAchievements fonksiyonunu içeri aktarın
+
 
 
 // Aktif sezonu dönen API
@@ -36,6 +38,9 @@ router.put('/deactivate', async (req, res) => {
       return res.status(404).json({ message: 'No active season found to deactivate.' });
     }
 
+    // Başarıları kaydet
+    await saveAchievements(activeSeason);
+
     // Aktif sezonu pasif hale getir
     activeSeason.isCompleted = true;
     await activeSeason.save();
@@ -49,6 +54,5 @@ router.put('/deactivate', async (req, res) => {
     res.status(500).json({ error: 'Failed to deactivate active season.' });
   }
 });
-
 
 module.exports = router;
