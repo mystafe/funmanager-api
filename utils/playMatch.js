@@ -1,9 +1,8 @@
 const Team = require('../models/Team');
 const Fixture = require('../models/Fixture');
-const { assignGoals } = require('./goalUtils');
 const saveStanding = require('./saveStanding');
-const saveAchievement = require('./saveAchievement');
-
+const saveAchievement = require('../utils/saveAchievement');
+const assignGoals = require('./assignGoals');
 /**
  * Plays a single match, calculates scores, updates standings, and records achievements.
  *

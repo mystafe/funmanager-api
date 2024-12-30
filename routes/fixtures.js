@@ -4,12 +4,7 @@ const Team = require('../models/Team');
 const createFixture = require('../utils/createFixture');
 const Fixture = require('../models/Fixture');
 const router = express.Router();
-const Player = require('../models/Player');
-const Standing = require('../models/Standing');
-const Achievement = require('../models/Achievement');
-const { saveAchievements } = require('../utils/achievementUtils'); // saveAchievements fonksiyonunu içeri aktarı
 const Goal = require('../models/Goal');
-const resetInitialData = require('../utils/resetInitialData');
 const loadInitialData = require('../utils/loadInitialData');
 const MatchResult = require('../models/MatchResult');
 

@@ -6,31 +6,37 @@ const Season = require('../models/Season');
 const Standing = require('../models/Standing');
 const Player = require('../models/Player');
 
-const getMostGoalsMinute = require('../utils/statistics').getMostGoalsMinute;
-const getTopThreeGoalMinutes = require('../utils/statistics').getTopThreeGoalMinutes;
-
 // Tüm başarıları dönen API
 router.get('/all', async (req, res) => {
   try {
+    // Veritabanından tüm başarıları çek
     const achievements = await Achievement.find()
-      .populate('season', 'seasonNumber') // Sezon bilgisi
-      .populate('topScorer.player', 'name') // Gol kralı oyuncu bilgisi
-      .populate('champion.team', 'name'); // Şampiyon takım bilgisi
-
-    // anync fonksıyonunu yazırmak istiyorum - getMostGoalsMinute
-    const mostGoalsMinute = await getMostGoalsMinute();
-    console.log(mostGoalsMinute);
-
-    console.log('most 3 goals minute', await getTopThreeGoalMinutes());
+      .populate('champion', 'name') // Şampiyon takım bilgisi
+      .populate({
+        path: 'topScorers.player', // Gol kralı oyuncuları doldur
+        select: 'name team', // Oyuncu adı ve takımı seç
+        populate: {
+          path: 'team', // Oyuncunun takımını doldur
+          select: 'name', // Sadece takım adını getir
+        },
+      });
 
     if (!achievements.length) {
       return res.status(404).json({ error: 'No achievements found.' });
     }
 
+    // Başarıları okunabilir bir formatta döndür
+    const formattedAchievements = achievements.map((achievement) => ({
+      season: achievement.seasonNumber,
+      champion: achievement.champion ? achievement.champion.name : 'Unknown',
+      topScorers: achievement.topScorers.map((scorer) => ({
+        playerName: scorer.player.name,
+        team: scorer.player.team ? scorer.player.team.name : 'Unknown',
+        goals: scorer.goals,
+      })),
+    }));
 
-
-
-    res.json(achievements);
+    res.json(formattedAchievements);
   } catch (error) {
     console.error('Error fetching achievements:', error.message);
     res.status(500).json({ error: 'Failed to fetch achievements.' });

@@ -2,153 +2,33 @@ const express = require('express');
 const router = express.Router();
 const Fixture = require('../models/Fixture');
 const Standing = require('../models/Standing');
-const Player = require('../models/Player');
-const Team = require('../models/Team');
-const Season = require('../models/Season'); // Season modelini içe aktardık
+const Season = require('../models/Season');
 const Achievement = require('../models/Achievement');
-const Goal = require('../models/Goal');
-const { saveAchievements } = require('../utils/achievementUtils');
-const MatchResult = require('../models/MatchResult');
-const { saveGoal, assignGoals } = require('../utils/goalUtils');
 const playMatch = require('../utils/playMatch');
-
-
-
-// router.post('/play', async (req, res) => {
-//   const { matchId, homeScore, awayScore, goalScorers } = req.body;
-
-//   try {
-//     // Aktif sezonu kontrol et
-//     const activeSeason = await Season.findOne({ isCompleted: false });
-//     if (!activeSeason) {
-//       return res.status(404).json({ error: 'No active season found.' });
-//     }
-
-//     // 1. Fikstürü güncelle
-//     const fixture = await Fixture.findOneAndUpdate(
-//       { 'matches._id': matchId, season: activeSeason._id }, // Sadece aktif sezonun maçları
-//       {
-//         $set: {
-//           'matches.$.homeScore': homeScore,
-//           'matches.$.awayScore': awayScore,
-//         },
-//       },
-//       { new: true }
-//     ).populate('matches.homeTeam matches.awayTeam');
-
-//     if (!fixture) {
-//       return res.status(404).json({ error: 'Match not found in the active season.' });
-//     }
-
-//     // 2. Standings güncelle
-//     const match = fixture.matches.find(m => m._id.toString() === matchId);
-//     if (!match) {
-//       return res.status(404).json({ error: 'Match not found in the fixture.' });
-//     }
-
-//     const { homeTeam, awayTeam } = match;
-
-//     const homeStanding = await Standing.findOneAndUpdate(
-//       { team: homeTeam._id, season: activeSeason._id },
-//       { $inc: { played: 1, goalsFor: homeScore, goalsAgainst: awayScore } },
-//       { new: true, upsert: true }
-//     );
-
-//     const awayStanding = await Standing.findOneAndUpdate(
-//       { team: awayTeam._id, season: activeSeason._id },
-//       { $inc: { played: 1, goalsFor: awayScore, goalsAgainst: homeScore } },
-//       { new: true, upsert: true }
-//     );
-
-//     if (homeScore > awayScore) {
-//       homeStanding.wins += 1;
-//       homeStanding.points += 3;
-//       awayStanding.losses += 1;
-//     } else if (homeScore < awayScore) {
-//       awayStanding.wins += 1;
-//       awayStanding.points += 3;
-//       homeStanding.losses += 1;
-//     } else {
-//       homeStanding.draws += 1;
-//       awayStanding.draws += 1;
-//       homeStanding.points += 1;
-//       awayStanding.points += 1;
-//     }
-
-//     homeStanding.goalDifference = homeStanding.goalsFor - homeStanding.goalsAgainst;
-//     awayStanding.goalDifference = awayStanding.goalsFor - awayStanding.goalsAgainst;
-
-//     await homeStanding.save();
-//     await awayStanding.save();
-
-//     // 3. Oyuncuları ve golleri güncelle
-//     for (const scorerId of goalScorers) {
-//       const scorer = await Player.findById(scorerId).populate('team');
-//       if (!scorer) {
-//         console.error(`Player with ID ${scorerId} not found.`);
-//         continue;
-//       }
-
-//       // Golü kaydet
-//       //eğer golü atan ev sahibi takım oyuncusu ise
-
-
-
-//       if (scorer.team._id.toString() === homeTeam._id.toString()) {
-//         await saveGoal(scorer, homeTeam, match, activeSeason);
-//       }
-//       else {
-//         await saveGoal(scorer, awayTeam, match, activeSeason);
-//       }
-
-//       // Oyuncunun gol istatistiğini güncelle
-//       await Player.findByIdAndUpdate(
-//         scorerId,
-//         { $push: { goals: matchId } },
-//         { new: true }
-//       );
-//     }
-
-//     res.json({
-//       message: 'Match played successfully.',
-//       match: {
-//         matchId,
-//         homeTeam: homeTeam.name,
-//         awayTeam: awayTeam.name,
-//         homeScore,
-//         awayScore,
-//       },
-//       standings: { homeStanding, awayStanding },
-//     });
-//   } catch (error) {
-//     console.error('Error processing match:', error.message);
-//     res.status(500).json({ error: 'Failed to process match.' });
-//   }
-// });
-
-
+const saveGoal = require('../utils/saveGoal');
+const generateMinutes = require('../utils/generateMinutes');
+const saveAchievement = require('../utils/saveAchievement');
+const Team = require('../models/Team');
+const assignGoals = require('../utils/assignGoals');
+const Player = require('../models/Player');
 
 // Tüm maçları oynatan API
 router.post('/play-all-remaining', async (req, res) => {
   try {
-    // Find the active season
     const activeSeason = await Season.findOne({ isCompleted: false });
 
     if (!activeSeason) {
       return res.status(404).json({ error: 'No active season found.' });
     }
 
-    // Retrieve the fixture for the active season
     const fixture = await Fixture.findOne({ season: activeSeason._id })
       .populate('matches.homeTeam', 'name')
-      .populate('matches.awayTeam', 'name')
-      .exec();
+      .populate('matches.awayTeam', 'name');
 
     if (!fixture) {
       return res.status(404).json({ error: 'No fixture found for the active season.' });
     }
 
-    // Filter matches that have not been played yet
     const remainingMatches = fixture.matches.filter(
       (match) => match.homeScore === null && match.awayScore === null
     );
@@ -157,13 +37,32 @@ router.post('/play-all-remaining', async (req, res) => {
       return res.status(404).json({ error: 'No remaining matches to play in the active season.' });
     }
 
-    // Play all remaining matches
     const playedMatches = await Promise.all(
       remainingMatches.map((match) => playMatch(match, activeSeason))
     );
 
+    activeSeason.isCompleted = true;
+    await activeSeason.save();
+
+    const standings = await Standing.find({ season: activeSeason._id })
+      .sort({ points: -1, goalDifference: -1 })
+      .populate('team', 'name');
+
+    if (standings.length > 0) {
+      const championTeam = standings[0].team;
+
+      await Achievement.findOneAndUpdate(
+        { season: activeSeason._id },
+        {
+          $set: { champion: championTeam },
+          $setOnInsert: { season: activeSeason._id, seasonNumber: activeSeason.seasonNumber },
+        },
+        { upsert: true }
+      );
+    }
+
     res.json({
-      message: 'All remaining matches for the active season have been played.',
+      message: 'All remaining matches for the active season have been played and achievements saved.',
       playedMatches,
     });
   } catch (error) {
@@ -172,12 +71,13 @@ router.post('/play-all-remaining', async (req, res) => {
   }
 });
 
-//play-week API'si
+// Belirli bir haftanın maçlarını oynatan API
 router.post('/play-week/:seasonNumber/:week', async (req, res) => {
   const { seasonNumber, week } = req.params;
 
   try {
     const season = await Season.findOne({ seasonNumber: parseInt(seasonNumber) });
+
     if (!season) {
       return res.status(404).json({ error: `Season ${seasonNumber} not found.` });
     }
@@ -217,5 +117,102 @@ router.post('/play-week/:seasonNumber/:week', async (req, res) => {
   }
 });
 
-module.exports = router;
+// Belirli bir maçı oynatan API
+router.post('/play-match', async (req, res) => {
+  const { matchId, homeScorers, awayScorers } = req.body;
 
+  try {
+    const fixture = await Fixture.findOne({ 'matches._id': matchId }).populate('season');
+
+    if (!fixture) {
+      return res.status(404).json({ error: 'Match not found in fixture.' });
+    }
+
+    const match = fixture.matches.id(matchId);
+    if (!match) {
+      return res.status(404).json({ error: 'Match not found.' });
+    }
+
+    const homeScore = homeScorers.length;
+    const awayScore = awayScorers.length;
+
+    const homeMinutes = generateMinutes(homeScore);
+    const awayMinutes = generateMinutes(awayScore);
+
+    for (let i = 0; i < homeScorers.length; i++) {
+      await saveGoal(homeScorers[i], match.homeTeam, matchId, fixture.season, homeMinutes[i], match.week);
+    }
+
+    for (let i = 0; i < awayScorers.length; i++) {
+      await saveGoal(awayScorers[i], match.awayTeam, matchId, fixture.season, awayMinutes[i], match.week);
+    }
+
+    match.homeScore = homeScore;
+    match.awayScore = awayScore;
+    await fixture.save();
+
+    await saveAchievement(homeScorers, match, fixture.season);
+    await saveAchievement(awayScorers, match, fixture.season);
+
+    res.json({
+      message: 'Match played successfully.',
+      matchId,
+      homeScore,
+      awayScore,
+    });
+  } catch (error) {
+    console.error('Error playing match:', error.message);
+    res.status(500).json({ error: 'Failed to play match.' });
+  }
+});
+
+// Random skorlarla maçı oynatan API
+router.post('/play-match-random', async (req, res) => {
+  const { matchId } = req.body;
+
+  try {
+    const fixture = await Fixture.findOne({ 'matches._id': matchId }).populate('season');
+
+    if (!fixture) {
+      return res.status(404).json({ error: 'Match not found in fixture.' });
+    }
+
+    const match = fixture.matches.id(matchId);
+    if (!match) {
+      return res.status(404).json({ error: 'Match not found.' });
+    }
+
+    const homeTeam = await Team.findById(match.homeTeam).populate('players');
+    const awayTeam = await Team.findById(match.awayTeam).populate('players');
+
+    const homeChance = homeTeam.attackStrength / (awayTeam.defenseStrength + 1) + 0.25;
+    const awayChance = awayTeam.attackStrength / (homeTeam.defenseStrength + 1);
+
+    const homeScore = Math.floor(homeChance * Math.random() * 5);
+    const awayScore = Math.floor(awayChance * Math.random() * 5);
+
+    const homeScorers = await assignGoals(homeTeam.players, homeScore, match, fixture.season);
+    const awayScorers = await assignGoals(awayTeam.players, awayScore, match, fixture.season);
+
+    match.homeScore = homeScore;
+    match.awayScore = awayScore;
+    match.homeScorers = homeScorers;
+    match.awayScorers = awayScorers;
+    await fixture.save();
+
+    await saveAchievement(homeScorers, match, fixture.season);
+    await saveAchievement(awayScorers, match, fixture.season);
+
+    res.json({
+      message: 'Match played randomly based on team strengths.',
+      matchId,
+      homeScore,
+      awayScore,
+    });
+  } catch (error) {
+    console.error('Error playing random match:', error.message);
+    res.status(500).json({ error: 'Failed to play match randomly.' });
+  }
+});
+
+module.exports = router;

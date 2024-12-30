@@ -10,3 +10,7 @@ Transfer - maddi durun - lig düşme - ödüller - stat - oyuncu yaşı - yetene
 
 
 player nationality - sponsors
+
+
+
+----achievement -- standings check
