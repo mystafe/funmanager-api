@@ -10,6 +10,15 @@ const fixtureSchema = new mongoose.Schema({
       week: { type: Number, required: true },
       homeScore: { type: Number, default: null }, // Ev sahibi skoru (null başlangıç)
       awayScore: { type: Number, default: null }, // Deplasman skoru (null başlangıç)
+      goals: [
+        {
+          player: { type: mongoose.Schema.Types.ObjectId, ref: 'Player' },
+          playerName: { type: String },
+          team: { type: mongoose.Schema.Types.ObjectId, ref: 'Team' },
+          teamName: { type: String },
+          minute: { type: Number },
+        },
+      ],
     },
   ],
 });

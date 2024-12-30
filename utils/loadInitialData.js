@@ -5,19 +5,29 @@ const Training = require('../models/Training');
 const initialTeams = require('../data/initialTeams');
 const initialTrainings = require('../data/initialTrainings');
 const calculateTeamStrength = require('./calculateTeamStrengths');
+const updateFirstEleven = require('./updateFirstEleven');
 
 const loadInitialData = async () => {
   try {
-    // Check if data already exists
+    // Check if teams data already exists
     const existingTeams = await Team.countDocuments();
     if (existingTeams > 0) {
       console.log('Initial data already exists. Skipping insert.');
+      // updateFirstEleven(); no need to update first eleven players no
+      // console.log('First eleven players updated.');
+      // const teamStrengths = await calculateTeamStrength(); no need to recalculate team strengths now
+      // console.log('Team Strengths:', teamStrengths);
       return;
     }
 
     // Load training programs
-    await Training.insertMany(initialTrainings);
-    console.log('Training programs loaded.');
+    const existingTrainings = await Training.countDocuments();
+    if (existingTrainings === 0) {
+      await Training.insertMany(initialTrainings);
+      console.log('Training programs loaded.');
+    } else {
+      console.log('Training programs already exist. Skipping insert.');
+    }
 
     // Tactic formations
     const tacticFormation = {
@@ -31,6 +41,15 @@ const loadInitialData = async () => {
     };
 
     for (const teamData of initialTeams) {
+      // Create stadium
+      const stadium = new Stadium({
+        name: teamData.stadium.name,
+        level: teamData.stadium.level,
+        stadiumCapacity: teamData.stadium.stadiumCapacity,
+        city: teamData.stadium.city,
+      });
+      await stadium.save();
+
       // Create team
       const team = new Team({
         name: teamData.name,
@@ -45,23 +64,18 @@ const loadInitialData = async () => {
         income: teamData.income,
         defaultTactic: teamData.defaultTactic,
         enteredCompetitions: teamData.enteredCompetitions,
+        stadium: stadium._id,
       });
       await team.save();
 
-      // Create stadium
-      const stadium = new Stadium({
-        ...teamData.stadium,
-        teamId: team._id,
-      });
-      await stadium.save();
-
-      // Group players by position
+      // Group players by position and assign team ID
       const positionGroups = { Goalkeeper: [], Defence: [], Midfield: [], Forward: [] };
-
+      const playerIds = [];
       for (const playerData of teamData.players) {
-        const player = new Player({ ...playerData, team: team._id });
+        const player = new Player({ ...playerData, team: team._id }); // Takım ID'sini burada ekliyoruz
         await player.save();
         positionGroups[player.position]?.push(player);
+        playerIds.push(player._id);
       }
 
       // Sort players within each position
@@ -76,7 +90,7 @@ const loadInitialData = async () => {
       // Determine formation
       const formation = tacticFormation[teamData.defaultTactic];
       if (!formation) {
-        console.warn(`Unknown tactic ${teamData.defaultTactic}. Skipping team ${team.name}.`);
+        console.warn(`Unknown tactic ${teamData.defaultTactic}. Skipping team ${teamData.name}.`);
         continue;
       }
 
@@ -92,17 +106,22 @@ const loadInitialData = async () => {
       const playersOnBench = remainingPlayers.slice(0, 7);
 
       // Update player flags
-      for (const player of playersInFirstEleven) {
-        await Player.findByIdAndUpdate(player._id, { isFirstEleven: true, isMatchSquad: true });
-      }
-      for (const player of playersOnBench) {
-        await Player.findByIdAndUpdate(player._id, { isMatchSquad: true });
-      }
+      await Player.updateMany(
+        { _id: { $in: playersInFirstEleven.map((p) => p._id) } },
+        { isFirstEleven: true, isMatchSquad: true }
+      );
+      await Player.updateMany(
+        { _id: { $in: playersOnBench.map((p) => p._id) } },
+        { isMatchSquad: true }
+      );
 
-      // Update team
+      // Update team with players
+      team.players = playerIds;
       team.playersInFirstEleven = playersInFirstEleven.map((p) => p._id);
       team.playersOnBench = playersOnBench.map((p) => p._id);
       await team.save();
+
+      console.log(`Team ${team.name} created with ${playerIds.length} players.`);
     }
 
     console.log('Initial teams, players, and stadiums loaded.');

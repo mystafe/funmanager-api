@@ -19,7 +19,7 @@ const teamSchema = new mongoose.Schema({
   income: { type: Number, required: true, default: 200000 }, // Gelirler
   defaultTactic: { type: String, required: true, default: '4-4-2' }, // Varsayılan taktik
   // sponsors: [{ tkype: mongoose.Schema.Types.ObjectId, ref: 'Sponsor' }], // Takıma bağlı sponsorlar
-  enteredCompetitions: [{ type: String }], // Katıldığı turnuvalar
+  enteredCompetitions: [{ type: String, default: 'Süper Lig' }], // Katıldığı turnuvalar
 });
 
 module.exports = mongoose.model('Team', teamSchema);

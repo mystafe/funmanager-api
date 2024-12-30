@@ -16,6 +16,20 @@ const resetInitialData = async () => {
     console.log('Starting database reset...');
 
     // Clear all collections
+    await deleteInitialData();
+
+    // Optionally, re-initialize data
+    // await initializeData();
+  } catch (error) {
+    console.error('Error resetting database:', error.message);
+  }
+};
+
+const deleteInitialData = async () => {
+  try {
+    console.log('Starting database delete...');
+
+    // Clear all collections
     await Team.deleteMany({});
     console.log('Teams collection cleared.');
 
@@ -57,6 +71,7 @@ const resetInitialData = async () => {
     console.error('Error resetting database:', error.message);
   }
 };
+
 
 
 module.exports = resetInitialData;

@@ -9,7 +9,7 @@ const { getTeamsWithFirstEleven, getTeamsWithFirstElevenPretty } = require('./ut
 const calculateTeamStrength = require('./utils/calculateTeamStrengths');
 const app = express();
 
-const mode = 1; // 0: no data, 1: initiate data
+const mode = 2; // 0: no data, 1: initiate data
 // Middleware
 app.use(express.json()); // JSON desteği
 app.use(cors()); // CORS desteği
@@ -20,7 +20,7 @@ const startServer = async () => {
     // Veritabanına bağlan
     await connectDB();
 
-    if (mode === 0) {
+    if (mode === 1) {
       await resetInitialData();
     }
     // else if (mode === 3) await getTeamsWithFirstEleven();
