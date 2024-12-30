@@ -80,164 +80,6 @@ router.post('/create', async (req, res) => {
   }
 });
 
-// Tüm maçları oynatan API
-// router.post('/play-all', async (req, res) => {
-//   try {
-//     const activeSeason = await Season.findOne({ isCompleted: false });
-//     if (!activeSeason) {
-//       return res.status(404).json({ error: 'No active season found.' });
-//     }
-
-//     const fixture = await Fixture.findOne({ season: activeSeason._id })
-//       .populate('matches.homeTeam', 'name')
-//       .populate('matches.awayTeam', 'name');
-
-//     if (!fixture) {
-//       return res.status(404).json({ error: 'No fixture found for the active season.' });
-//     }
-
-//     const unplayedMatches = fixture.matches.filter(
-//       match => match.homeScore === null && match.awayScore === null
-//     );
-
-//     if (!unplayedMatches.length) {
-//       return res.status(404).json({ error: 'No unplayed matches found for the active season.' });
-//     }
-
-//     const assignGoals = async (players, goals, matchId) => {
-//       const weightedPlayers = [];
-//       players.forEach(player => {
-//         const weight = Math.ceil(player.attack / 10); // Atak gücüne göre ağırlık
-//         for (let i = 0; i < weight; i++) {
-//           weightedPlayers.push(player._id);
-//         }
-//       });
-
-//       const scorers = [];
-//       for (let i = 0; i < goals; i++) {
-//         const scorer = weightedPlayers[Math.floor(Math.random() * weightedPlayers.length)];
-//         scorers.push(scorer);
-
-//         // Oyuncunun gol attığı maçlar güncellenir
-//         await Player.findByIdAndUpdate(scorer, { $push: { goals: matchId } });
-//       }
-
-//       return scorers;
-//     };
-
-//     const playedMatches = [];
-
-//     for (const match of unplayedMatches) {
-//       const homeTeam = await Team.findById(match.homeTeam._id).populate('players');
-//       const awayTeam = await Team.findById(match.awayTeam._id).populate('players');
-
-//       const homeAttack = homeTeam.attackStrength || 0;
-//       const awayAttack = awayTeam.attackStrength || 0;
-
-//       const homeDefense = homeTeam.defenseStrength || 0;
-//       const awayDefense = awayTeam.defenseStrength || 0;
-
-//       const homeChance = homeAttack / (awayDefense + 1) + 0.25;
-//       const awayChance = awayAttack / (homeDefense + 1);
-
-//       const homeScore = Math.floor(homeChance * Math.random() * 5);
-//       const awayScore = Math.floor(awayChance * Math.random() * 5);
-
-//       const homeScorers = await assignGoals(homeTeam.players, homeScore, match._id);
-//       const awayScorers = await assignGoals(awayTeam.players, awayScore, match._id);
-
-//       await Fixture.updateOne(
-//         { 'matches._id': match._id },
-//         {
-//           $set: {
-//             'matches.$.homeScore': homeScore,
-//             'matches.$.awayScore': awayScore,
-//             'matches.$.homeScorers': homeScorers,
-//             'matches.$.awayScorers': awayScorers,
-//           },
-//         }
-//       );
-
-
-//
-//
-//  İç dünyan karışık *** kafaya takan birisin relax 
-// ** geçmişte yaşanmışlıklar hala var.
-// iç dünyaya pek çok kişiyi dahil etmiyorsun.---ben izin vermiyorum. 
-// Küçük kuş beyaz olumlu haber -- arkadaş var.. Konuşmayı 
-// Karma karışık dolu dolu -- hayatın için karar almışsın --- 3-4 kere
-// Çok uzakta bir çizgi belirecek sınırlarım.
-// Kocaman bir kalp var ve de belirsizlikler var.
-// Kız yüzünü çevirmek -- bir arkadaş var bundan mutluluk duyuyor.
-// -- T Y Ç ---  Baş arkadaş var.
-// Çok uzakta bir çizgi belirecek sınırlarım.
-// Kuş - darlanma var.
-// Başka bir kız -- sırtını dönmüşsün.
-// Uzun boyunlu beyaz tenli bir kız yardım etmeye çalışacaksın.
-//
-
-//
-//       // Standings güncellemesi
-//       const homeStanding = await Standing.findOneAndUpdate(
-//         { team: match.homeTeam._id, season: activeSeason._id },
-//         { $inc: { played: 1, goalsFor: homeScore, goalsAgainst: awayScore } },
-//         { new: true, upsert: true }
-//       );
-
-//       const awayStanding = await Standing.findOneAndUpdate(
-//         { team: match.awayTeam._id, season: activeSeason._id },
-//         { $inc: { played: 1, goalsFor: awayScore, goalsAgainst: homeScore } },
-//         { new: true, upsert: true }
-//       );
-
-//       if (homeScore > awayScore) {
-//         homeStanding.wins += 1;
-//         homeStanding.points += 3;
-//         awayStanding.losses += 1;
-//       } else if (homeScore < awayScore) {
-//         awayStanding.wins += 1;
-//         awayStanding.points += 3;
-//         homeStanding.losses += 1;
-//       } else {
-//         homeStanding.draws += 1;
-//         awayStanding.draws += 1;
-//         homeStanding.points += 1;
-//         awayStanding.points += 1;
-//       }
-
-//       homeStanding.goalDifference = homeStanding.goalsFor - homeStanding.goalsAgainst;
-//       awayStanding.goalDifference = awayStanding.goalsFor - awayStanding.goalsAgainst;
-
-//       await homeStanding.save();
-//       await awayStanding.save();
-
-//       playedMatches.push({
-//         matchId: match._id,
-//         homeTeam: match.homeTeam.name,
-//         awayTeam: match.awayTeam.name,
-//         homeScore,
-//         awayScore,
-//         homeScorers,
-//         awayScorers,
-//       });
-//     }
-
-//     // Başarıları kaydet
-//     console.log('Saving achievements...');
-//     await saveAchievements(activeSeason);
-//     // Sezonu tamamlanmış olarak işaretle
-//     activeSeason.isCompleted = true;
-//     await activeSeason.save();
-
-//     res.json({
-//       message: 'All matches for the active season played successfully. Season marked as completed.',
-//       playedMatches,
-//     });
-//   } catch (error) {
-//     console.error('Error processing all matches:', error.message);
-//     res.status(500).json({ error: 'Failed to process all matches.' });
-//   }
-// });
 
 
 // Belirli haftanın maçlarını dönen API
@@ -455,10 +297,8 @@ router.get('/season-matches', async (req, res) => {
 router.get('/season-matches-pretty/:seasonNumber', async (req, res) => {
   try {
     const { seasonNumber } = req.params;
-    console.log('seasonNumber:', seasonNumber);
 
     const activeSeason = await Season.findOne({ seasonNumber: parseInt(seasonNumber) });
-    console.log('activeSeason:', activeSeason);
 
     if (!activeSeason) {
       return res.status(404).json({ error: 'No season found.' });
@@ -469,7 +309,6 @@ router.get('/season-matches-pretty/:seasonNumber', async (req, res) => {
       .populate('match.awayTeam', 'name')
       .populate('goals.scorer', 'name')
       .populate('goals.team', 'name');
-    console.log('fixtures:', fixtures);
 
 
     if (!fixtures || fixtures.length === 0) {

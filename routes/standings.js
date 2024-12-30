@@ -5,69 +5,94 @@ const Season = require('../models/Season');
 const router = express.Router();
 const Fixture = require('../models/Fixture');
 
-// Tüm puan durumunu dönen API
-router.get('/all', async (req, res) => {
+// Son sezona ait puan durumunu dönen API
+router.get('/latest', async (req, res) => {
   try {
-    // Tüm puan durumlarını çek, takım ve sezon bilgileri ile birlikte
-    const standings = await Standing.find()
-      .populate('team', 'name')
-      .populate('season', 'seasonNumber'); // Sezon bilgisini de getir
+    // Find the latest season
+    const latestSeason = await Season.findOne().sort({ seasonNumber: -1 });
 
-    if (!standings || standings.length === 0) {
-      return res.status(404).json({ error: 'No standings found.' });
+    if (!latestSeason) {
+      return res.status(404).json({ error: 'No seasons found.' });
     }
 
-    // Sezonlara göre gruplama
-    const standingsBySeason = standings.reduce((acc, standing) => {
-      if (!standing.season || !standing.season.seasonNumber) {
-        console.warn(`Standing with missing season data: ${JSON.stringify(standing)}`);
-        return acc;
-      }
+    // Retrieve standings for the latest season
+    const standings = await Standing.find({ season: latestSeason._id })
+      .populate('team', 'name')
+      .sort({ points: -1, goalDifference: -1, goalsFor: -1 });
 
-      const seasonYear = standing.season.seasonNumber;
+    if (!standings.length) {
+      return res.status(404).json({ error: `No standings found for season ${latestSeason.seasonNumber}.` });
+    }
 
-      if (!acc[seasonYear]) {
-        acc[seasonYear] = [];
-      }
+    // Format standings for the response
+    const formattedStandings = standings.map((standing, index) => ({
+      position: index + 1,
+      team: standing.team.name,
+      played: standing.played,
+      wins: standing.wins,
+      draws: standing.draws,
+      losses: standing.losses,
+      goalsFor: standing.goalsFor,
+      goalsAgainst: standing.goalsAgainst,
+      goalDifference: standing.goalDifference,
+      points: standing.points,
+    }));
 
-      acc[seasonYear].push(standing);
-      return acc;
-    }, {});
-
-    // Her sezon için sıralama ve formatlama
-    const response = Object.entries(standingsBySeason).map(([seasonYear, seasonStandings]) => {
-      const sortedStandings = seasonStandings.sort((a, b) => {
-        if (b.points === a.points) {
-          return b.goalDifference - a.goalDifference; // Aynı puanda ise averaj
-        }
-        return b.points - a.points; // Puan sıralaması
-      });
-
-      const formattedStandings = sortedStandings.map((standing, index) => ({
-        rank: index + 1,
-        team: standing.team.name || 'Unknown',
-        played: standing.played || 0,
-        wins: standing.wins || 0,
-        draws: standing.draws || 0,
-        losses: standing.losses || 0,
-        goalsFor: standing.goalsFor || 0,
-        goalsAgainst: standing.goalsAgainst || 0,
-        goalDifference: standing.goalDifference || 0,
-        points: standing.points || 0,
-      }));
-
-      return {
-        seasonYear,
-        standings: formattedStandings,
-      };
+    res.json({
+      season: latestSeason.seasonNumber,
+      standings: formattedStandings,
     });
-
-    res.json(response);
   } catch (error) {
-    console.error('Error fetching standings by season:', error.message);
-    res.status(500).json({ error: 'Failed to fetch standings by season.' });
+    console.error('Error fetching latest standings:', error.message);
+    res.status(500).json({ error: 'Failed to fetch latest standings.' });
   }
 });
+
+// Verilen yıla ait puan durumunu dönen API
+router.get('/season/:seasonNumber', async (req, res) => {
+  const { seasonNumber } = req.params;
+
+  try {
+    // Find the specified season
+    const season = await Season.findOne({ seasonNumber: parseInt(seasonNumber) });
+
+    if (!season) {
+      return res.status(404).json({ error: `Season ${seasonNumber} not found.` });
+    }
+
+    // Retrieve standings for the specified season
+    const standings = await Standing.find({ season: season._id })
+      .populate('team', 'name')
+      .sort({ points: -1, goalDifference: -1, goalsFor: -1 });
+
+    if (!standings.length) {
+      return res.status(404).json({ error: `No standings found for season ${seasonNumber}.` });
+    }
+
+    // Format standings for the response
+    const formattedStandings = standings.map((standing, index) => ({
+      position: index + 1,
+      team: standing.team.name,
+      played: standing.played,
+      wins: standing.wins,
+      draws: standing.draws,
+      losses: standing.losses,
+      goalsFor: standing.goalsFor,
+      goalsAgainst: standing.goalsAgainst,
+      goalDifference: standing.goalDifference,
+      points: standing.points,
+    }));
+
+    res.json({
+      season: season.seasonNumber,
+      standings: formattedStandings,
+    });
+  } catch (error) {
+    console.error('Error fetching standings for season:', error.message);
+    res.status(500).json({ error: 'Failed to fetch standings for the season.' });
+  }
+});
+
 // Bir takımın detaylı puan durumu
 router.get('/team/:teamId', async (req, res) => {
   const { teamId } = req.params;

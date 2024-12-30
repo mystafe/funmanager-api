@@ -82,8 +82,6 @@ const getTeamsWithFirstElevenPretty = async () => {
     const teamsWithFirstEleven = await getTeamsWithFirstEleven();
 
     teamsWithFirstEleven.forEach((team) => {
-      console.log(`\nTeam: ${team.name}`);
-      console.log('First Eleven:');
       team.playersInFirstEleven.forEach((player, index) => {
         console.log(
           `${index + 1}. Name: ${player.name}, Position: ${player.position}, Attack: ${player.attack}, Defense: ${player.defense}, Goalkeeper: ${player.goalkeeper}, Stamina: ${player.stamina}, Condition: ${player.condition}, Form: ${player.form}`

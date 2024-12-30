@@ -123,7 +123,7 @@ const saveGoal = async (player, team, matchId, season) => {
         },
       }
     );
-    console.log(`Goal added to fixture: Match ID: ${matchId}, Minute: ${minute}`);
+
   } catch (error) {
     console.error('Error saving goal:', error.message, {
       // player,
