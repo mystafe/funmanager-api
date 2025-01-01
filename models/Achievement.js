@@ -8,10 +8,11 @@ const achievementSchema = new mongoose.Schema(
       {
         player: { type: mongoose.Schema.Types.ObjectId, ref: 'Player', required: true },
         playerName: { type: String, required: true },
-        goals: { type: Number, required: true },
+        teamName: { type: String, required: true }, // Takım ismi
+        goals: { type: Number, required: true }, // Gol sayısı
       },
-    ], // Allows multiple top scorers in case of ties
-    champion: { type: mongoose.Schema.Types.ObjectId, ref: 'Team' }, // Optional field for champion team
+    ], // Gol kralları
+    champion: { type: mongoose.Schema.Types.ObjectId, ref: 'Team' }, // Şampiyon takım
   },
   { timestamps: true }
 );

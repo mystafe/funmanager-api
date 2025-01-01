@@ -21,10 +21,22 @@ const assignGoals = async (players, goals, match, season) => {
       throw new Error('No players available for scoring.');
     }
 
+    // Validate goals count
+    if (goals <= 0) {
+      console.warn('No goals to assign.');
+      return [];
+    }
+
+    // Fetch all player details
+    const playerData = await Player.find({ _id: { $in: players.map((p) => p._id) } }).populate('team', 'name');
+    if (!playerData.length) {
+      throw new Error('No valid players found for scoring.');
+    }
+
     // Build weighted array for player selection
     const weightedPlayers = [];
-    players.forEach((player) => {
-      const weight = Math.ceil((player.attack || 0) / 10); // Default to 0 if attack is undefined
+    playerData.forEach((player) => {
+      const weight = Math.max(1, Math.ceil((player.attack || 0) / 10)); // Ensure a minimum weight of 1
       for (let i = 0; i < weight; i++) {
         weightedPlayers.push(player);
       }
@@ -40,25 +52,35 @@ const assignGoals = async (players, goals, match, season) => {
     // Assign goals and save them
     const scorers = await Promise.all(
       minutes.map(async (minute) => {
-        const randomIndex = Math.floor(Math.random() * weightedPlayers.length);
-        const scorer = await Player.findById(weightedPlayers[randomIndex]._id).populate('team', 'name');
+        try {
+          const randomIndex = Math.floor(Math.random() * weightedPlayers.length);
+          const scorer = weightedPlayers[randomIndex];
 
-        if (!scorer || !scorer.team) {
-          console.error(`Error: Scorer ${scorer?.name || 'Unknown'} does not have a valid team.`);
-          return null; // Skip invalid scorer
+          if (!scorer || !scorer.team) {
+            console.error(`Error: Scorer ${scorer?.name || 'Unknown'} does not have a valid team.`);
+            return null; // Skip invalid scorer
+          }
+
+          await saveGoal(scorer._id, scorer.team._id, match._id, season, minute, match.week || 1);
+          return scorer._id;
+        } catch (error) {
+          console.error(`Failed to save goal for minute ${minute}:`, error.message);
+          return null;
         }
-
-        await saveGoal(scorer, scorer.team, match._id, season, minute, match.week || 1);
-        return scorer._id;
       })
     );
 
     // Filter out null values (invalid scorers)
-    return scorers.filter(Boolean);
+    const validScorers = scorers.filter(Boolean);
+    if (validScorers.length === 0) {
+      console.warn('No valid scorers were assigned.');
+    }
+
+    return validScorers;
   } catch (error) {
     console.error('Error assigning goals:', error.message);
     throw new Error('Failed to assign goals.');
   }
 };
 
-module.exports = assignGoals; 
+module.exports = assignGoals;
