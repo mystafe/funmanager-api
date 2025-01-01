@@ -1,23 +1,13 @@
 const Team = require('../models/Team');
 const Player = require('../models/Player');
+const tacticFormation = require('../data/tactics');
 
 /**
  * Güncel tüm takımların ilk 11 oyuncularını taktiğe göre günceller.
- * İlk 11 ve yedek oyuncuları JSON olarak döndürür.
+ * İlk 11, yedek oyuncuları, oyuncu güçlerini ve toplam gücü JSON olarak döndürür.
  */
 const updateFirstEleven = async (req, res) => {
   try {
-    const tacticFormation = {
-      '4-4-2': { Goalkeeper: 1, Defence: 4, Midfield: 4, Forward: 2 },
-      '3-5-2': { Goalkeeper: 1, Defence: 3, Midfield: 5, Forward: 2 },
-      '4-3-3': { Goalkeeper: 1, Defence: 4, Midfield: 3, Forward: 3 },
-      '3-4-3': { Goalkeeper: 1, Defence: 3, Midfield: 4, Forward: 3 },
-      '4-5-1': { Goalkeeper: 1, Defence: 4, Midfield: 5, Forward: 1 },
-      '4-2-4': { Goalkeeper: 1, Defence: 4, Midfield: 2, Forward: 4 },
-      '5-3-2': { Goalkeeper: 1, Defence: 5, Midfield: 3, Forward: 2 },
-      '5-4-1': { Goalkeeper: 1, Defence: 5, Midfield: 4, Forward: 1 },
-    };
-
     const teams = await Team.find().populate('players');
     const result = [];
 
@@ -31,21 +21,27 @@ const updateFirstEleven = async (req, res) => {
         await team.save();
       }
 
-      console.log(`Processing team: ${team.name} with tactic: ${team.defaultTactic}`);
-
       // Grup oyuncuları pozisyonlarına göre
       const positionGroups = { Goalkeeper: [], Defence: [], Midfield: [], Forward: [] };
       team.players.forEach((player) => {
         positionGroups[player.position]?.push(player);
       });
 
-      // Sıralama: Oyuncuları güce göre sırala
+      // Sıralama: Pozisyona göre uygun güç hesaplamaları
+      const calculateStrength = (player, position) => {
+        if (position === 'Goalkeeper') return player.goalkeeper * 1.5;
+        if (position === 'Defence') return player.defense * 1.3 + player.attack * 0.3;
+        if (position === 'Midfield') return player.defense * 0.8 + player.attack * 0.8;
+        if (position === 'Forward') return player.attack * 1.5 + player.defense * 0.3;
+        return 0;
+      };
+
       for (const position in positionGroups) {
-        positionGroups[position].sort((a, b) => {
-          const strengthA = a.attack * 1.3 + a.defense * 1.2 + a.goalkeeper * 1.5;
-          const strengthB = b.attack * 1.3 + b.defense * 1.2 + b.goalkeeper * 1.5;
-          return strengthB - strengthA;
+        positionGroups[position].forEach((player) => {
+          player.strength = calculateStrength(player, position); // Güç hesaplaması
         });
+
+        positionGroups[position].sort((a, b) => b.strength - a.strength);
       }
 
       // İlk 11'i seç
@@ -54,9 +50,10 @@ const updateFirstEleven = async (req, res) => {
         playersInFirstEleven.push(...positionGroups[position].slice(0, count));
       });
 
+      // İlk 11 oyuncularını pozisyonlarla ve güçleriyle yazdır
       console.log(`First eleven for ${team.name}:`);
       playersInFirstEleven.forEach((player) => {
-        console.log(`- ${player.position}: ${player.name}`);
+        console.log(`- ${player.position}: ${player.name} (Strength: ${player.strength})`);
       });
 
       // Yedekleri seç
@@ -64,6 +61,9 @@ const updateFirstEleven = async (req, res) => {
         .flat()
         .filter((player) => !playersInFirstEleven.includes(player));
       const playersOnBench = remainingPlayers.slice(0, 7);
+
+      // Takım toplam gücünü hesapla
+      const totalStrength = playersInFirstEleven.reduce((sum, player) => sum + player.strength, 0);
 
       // Oyuncu durumlarını güncelle
       await Player.updateMany(
@@ -87,11 +87,22 @@ const updateFirstEleven = async (req, res) => {
       result.push({
         teamName: team.name,
         defaultTactic: team.defaultTactic,
-        firstEleven: playersInFirstEleven.map((p) => ({ id: p._id, name: p.name, position: p.position })),
-        bench: playersOnBench.map((p) => ({ id: p._id, name: p.name, position: p.position })),
+        firstEleven: playersInFirstEleven.map((p) => ({
+          id: p._id,
+          name: p.name,
+          position: p.position,
+          strength: p.strength,
+        })),
+        bench: playersOnBench.map((p) => ({
+          id: p._id,
+          name: p.name,
+          position: p.position,
+          strength: calculateStrength(p, p.position),
+        })),
+        totalStrength,
       });
 
-      console.log(`First eleven and bench updated for ${team.name}.`);
+      console.log(`First eleven and bench updated for ${team.name} with total strength: ${totalStrength}.`);
     }
 
     console.log('All teams updated successfully.');

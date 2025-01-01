@@ -1,0 +1,26 @@
+const tacticFormation = {
+  '4-4-2': { Goalkeeper: 1, Defence: 4, Midfield: 4, Forward: 2 },
+  '3-5-2': { Goalkeeper: 1, Defence: 3, Midfield: 5, Forward: 2 },
+  '4-3-3': { Goalkeeper: 1, Defence: 4, Midfield: 3, Forward: 3 },
+  '3-4-3': { Goalkeeper: 1, Defence: 3, Midfield: 4, Forward: 3 },
+  '4-5-1': { Goalkeeper: 1, Defence: 4, Midfield: 5, Forward: 1 },
+  '4-2-4': { Goalkeeper: 1, Defence: 4, Midfield: 2, Forward: 4 },
+  '5-3-2': { Goalkeeper: 1, Defence: 5, Midfield: 3, Forward: 2 },
+  '5-4-1': { Goalkeeper: 1, Defence: 5, Midfield: 4, Forward: 1 },
+  '3-6-1': { Goalkeeper: 1, Defence: 3, Midfield: 5, Forward: 1 },
+  '3-3-4': { Goalkeeper: 1, Defence: 3, Midfield: 3, Forward: 4 },
+  '5-2-3': { Goalkeeper: 1, Defence: 5, Midfield: 2, Forward: 3 },
+  '5-5-0': { Goalkeeper: 1, Defence: 5, Midfield: 5, Forward: 0 },
+  '4-1-5': { Goalkeeper: 1, Defence: 4, Midfield: 1, Forward: 5 },
+  '4-6-0': { Goalkeeper: 1, Defence: 4, Midfield: 6, Forward: 0 },
+  '3-2-5': { Goalkeeper: 1, Defence: 3, Midfield: 2, Forward: 5 },
+  '3-7-0': { Goalkeeper: 1, Defence: 3, Midfield: 7, Forward: 0 },
+  '5-1-4': { Goalkeeper: 1, Defence: 5, Midfield: 1, Forward: 4 },
+  '5-6-0': { Goalkeeper: 1, Defence: 5, Midfield: 6, Forward: 0 },
+  '4-0-6': { Goalkeeper: 1, Defence: 4, Midfield: 0, Forward: 6 },
+  '4-7-0': { Goalkeeper: 1, Defence: 4, Midfield: 7, Forward: 0 },
+  '3-1-6': { Goalkeeper: 1, Defence: 3, Midfield: 1, Forward: 6 },
+  '5-0-5': { Goalkeeper: 1, Defence: 5, Midfield: 0, Forward: 5 },
+};
+
+module.exports = tacticFormation;

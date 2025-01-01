@@ -2,41 +2,23 @@ const Team = require('../models/Team');
 const Player = require('../models/Player');
 
 /**
- * Calculate the contribution of a player based on their stats, position, and factors.
+ * Calculate the contribution of a player based on their stats and position.
  * @param {Object} player - The player object.
  * @returns {Object} - Attack and defense contributions of the player.
  */
 const calculatePlayerContribution = (player) => {
-  const contributionFactor = (player.condition / 100) * (player.form / 10);
-  let attack = 0;
-  let defense = 0;
+  const conditionFactor = (player.condition / 100) * (player.form / 10);
+  const attackWeights = { Goalkeeper: 0, Defence: 0.2, Midfield: 1, Forward: 1.5 };
+  const defenseWeights = { Goalkeeper: 1.5, Defence: 1.2, Midfield: 1, Forward: 0.1 };
 
-  switch (player.position) {
-    case 'Goalkeeper':
-      defense += player.goalkeeper * contributionFactor;
-      break;
-    case 'Defence':
-      defense += player.defense * 1.2 * contributionFactor;
-      attack += player.attack * 0.2 * contributionFactor;
-      break;
-    case 'Midfield':
-      attack += player.attack * 1 * contributionFactor;
-      defense += player.defense * 1 * contributionFactor;
-      break;
-    case 'Forward':
-      attack += player.attack * 1.5 * contributionFactor;
-      defense += player.defense * 0.1 * contributionFactor;
-      break;
-    default:
-      console.warn(`Unknown position for player ${player.name}`);
-      break;
-  }
+  const attack = (player.attack || 0) * (attackWeights[player.position] || 0) * conditionFactor;
+  const defense = (player.defense || 0) * (defenseWeights[player.position] || 0) * conditionFactor;
 
   return { attack, defense };
 };
 
 /**
- * Calculate and return team strengths based on their first eleven players.
+ * Calculate and update team strengths based on their first eleven players.
  * @returns {Array} - Array of team strengths including attack and defense strengths.
  */
 const calculateTeamStrength = async () => {
@@ -51,42 +33,38 @@ const calculateTeamStrength = async () => {
       return [];
     }
 
-    const teamStrengths = [];
-
-    for (const team of teams) {
+    const teamStrengths = teams.map((team) => {
       const firstEleven = team.playersInFirstEleven;
 
-      if (!firstEleven.length) {
-        console.log(`No first eleven players found for team ${team.name}.`);
-        continue;
+      if (!firstEleven || !firstEleven.length) {
+        console.warn(`No first eleven players found for team ${team.name}.`);
+        return { teamName: team.name, attackStrength: 0, defenseStrength: 0 };
       }
 
-      let totalAttackPower = 0;
-      let totalDefensePower = 0;
+      const totalStrength = firstEleven.reduce(
+        (totals, player) => {
+          const { attack, defense } = calculatePlayerContribution(player);
+          totals.attack += attack;
+          totals.defense += defense;
+          return totals;
+        },
+        { attack: 0, defense: 0 }
+      );
 
-      firstEleven.forEach((player) => {
-        const { attack, defense } = calculatePlayerContribution(player);
-        totalAttackPower += attack;
-        totalDefensePower += defense;
-      });
-
-      // Scale power levels for realism
-      const scaledAttackPower = totalAttackPower / firstEleven.length;
-      const scaledDefensePower = totalDefensePower / firstEleven.length;
+      const attackStrength = Math.round(totalStrength.attack / firstEleven.length);
+      const defenseStrength = Math.round(totalStrength.defense / firstEleven.length);
 
       // Update the team's calculated strengths in the database
-      await Team.findByIdAndUpdate(team._id, {
-        attackStrength: Math.round(scaledAttackPower),
-        defenseStrength: Math.round(scaledDefensePower),
-      });
+      team.attackStrength = attackStrength;
+      team.defenseStrength = defenseStrength;
+      team.save();
 
-      // Add the team's strengths to the results
-      teamStrengths.push({
+      return {
         teamName: team.name,
-        attackStrength: Math.round(scaledAttackPower),
-        defenseStrength: Math.round(scaledDefensePower),
-      });
-    }
+        attackStrength,
+        defenseStrength,
+      };
+    });
 
     console.log('All team strengths calculated successfully.');
     return teamStrengths;

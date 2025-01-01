@@ -3,6 +3,8 @@ const Team = require('../models/Team');
 const Player = require('../models/Player');
 const router = express.Router();
 const updateFirstEleven = require('../utils/updateFirstEleven');
+const calculateTeamStrengths = require('../utils/calculateTeamStrengths');
+
 
 // Tüm takımların güçlerini dönen endpoint
 router.get('/powers', async (req, res) => {
@@ -62,5 +64,27 @@ router.get('/update-first-eleven', async (req, res) => {
   }
 });
 
+
+/**
+ * API to calculate and update team strengths.
+ * Returns the updated team strengths as JSON response.
+ */
+router.get('/update-team-strength', async (req, res) => {
+  try {
+    const teamStrengths = await calculateTeamStrengths();
+
+    if (!teamStrengths.length) {
+      return res.status(404).json({ message: 'No team strengths calculated. Ensure teams and players exist.' });
+    }
+
+    res.json({
+      message: 'Team strengths updated successfully.',
+      data: teamStrengths,
+    });
+  } catch (error) {
+    console.error('Error updating team strengths:', error.message);
+    res.status(500).json({ error: 'Failed to update team strengths.' });
+  }
+});
 
 module.exports = router;
