@@ -1,4 +1,3 @@
-const MatchResult = require('../models/MatchResult');
 const Goal = require('../models/Goal');
 const Team = require('../models/Team');
 const Player = require('../models/Player');

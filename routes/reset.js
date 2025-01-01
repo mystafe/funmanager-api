@@ -4,7 +4,6 @@ const Player = require('../models/Player');
 const Season = require('../models/Season');
 const Fixture = require('../models/Fixture');
 const Standing = require('../models/Standing');
-const MatchResult = require('../models/MatchResult');
 const Goal = require('../models/Goal');
 const Achievement = require('../models/Achievement');
 const Training = require('../models/Training');
@@ -24,7 +23,6 @@ router.delete('/reset', async (req, res) => {
     await Player.deleteMany({});
     await Season.deleteMany({});
     await Fixture.deleteMany({});
-    await MatchResult.deleteMany({});
     await Standing.deleteMany({});
     await Goal.deleteMany({});
     await Achievement.deleteMany({});
@@ -47,7 +45,6 @@ router.delete('/reload', async (req, res) => {
     await Player.deleteMany({});
     await Season.deleteMany({});
     await Fixture.deleteMany({});
-    await MatchResult.deleteMany({});
     await Standing.deleteMany({});
     await Goal.deleteMany({});
     await Achievement.deleteMany({});

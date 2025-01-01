@@ -6,7 +6,6 @@ const Season = require('../models/Season');
 const Stadium = require('../models/Stadium');
 const Sponsor = require('../models/Sponsor');
 const Standing = require('../models/Standing');
-const MatchResult = require('../models/MatchResult');
 const Goal = require('../models/Goal');
 const Achievement = require('../models/Achievement');
 const Training = require('../models/Training');
@@ -34,7 +33,6 @@ const deleteInitialData = async () => {
     await Player.deleteMany({});
     await Season.deleteMany({});
     await Fixture.deleteMany({});
-    await MatchResult.deleteMany({});
     await Standing.deleteMany({});
     await Goal.deleteMany({});
     await Achievement.deleteMany({});
