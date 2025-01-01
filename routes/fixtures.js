@@ -4,7 +4,6 @@ const Team = require('../models/Team');
 const createFixture = require('../utils/createFixture');
 const Fixture = require('../models/Fixture');
 const router = express.Router();
-const Goal = require('../models/Goal');
 const loadInitialData = require('../utils/loadInitialData');
 
 // Fikstür oluşturma endpoint'i

@@ -1,57 +1,71 @@
 const Achievement = require('../models/Achievement');
+const Fixture = require('../models/Fixture');
+const Standing = require('../models/Standing');
 const Player = require('../models/Player');
 
 /**
- * Updates player achievements for a given match result.
+ * Saves achievements for a completed season, including top scorers and the champion.
  *
- * @param {Array} scorers - Array of goal scorer IDs.
- * @param {Object} match - The match object containing scores and team info.
- * @param {Object} season - The active season object.
+ * @param {Object} season - The completed season object.
  */
-const saveAchievement = async (scorers, match, season) => {
+const saveAchievement = async (season) => {
   try {
-    if (!scorers || scorers.length === 0) {
-      console.log('No scorers provided for achievements.');
-      return;
+    // O sezonun fikstürünü al
+    const fixture = await Fixture.findOne({ season: season._id });
+
+    if (!fixture || !fixture.matches.length) {
+      throw new Error(`No matches found for season ${season.seasonNumber}`);
     }
 
-    // Ensure Achievement exists for the season
-    const achievement = await Achievement.findOneAndUpdate(
+    // Gol atan oyuncuları topla
+    const scorerMap = {};
+    fixture.matches.forEach((match) => {
+      const allScorers = [...(match.homeScorers || []), ...(match.awayScorers || [])];
+      allScorers.forEach((scorerId) => {
+        scorerMap[scorerId] = (scorerMap[scorerId] || 0) + 1;
+      });
+    });
+
+    // Gol krallarını belirle
+    const topScorers = Object.entries(scorerMap)
+      .map(([playerId, goals]) => ({ playerId, goals }))
+      .sort((a, b) => b.goals - a.goals);
+
+    const enrichedTopScorers = await Promise.all(
+      topScorers.map(async ({ playerId, goals }) => {
+        const player = await Player.findById(playerId).populate('team', 'name');
+        return {
+          player: playerId,
+          playerName: player.name,
+          teamName: player.team?.name || 'Unknown Team',
+          goals,
+        };
+      })
+    );
+
+    // Şampiyonu belirle
+    const standings = await Standing.find({ season: season._id })
+      .sort({ points: -1, goalDifference: -1, goalsFor: -1 })
+      .populate('team', 'name');
+
+    const champion = standings.length ? standings[0].team : null;
+
+    // Başarıyı kaydet
+    await Achievement.findOneAndUpdate(
       { season: season._id },
-      { $setOnInsert: { season: season._id, seasonNumber: season.seasonNumber, topScorers: [] } },
+      {
+        $set: {
+          season: season._id,
+          seasonNumber: season.seasonNumber,
+          champion: champion ? champion._id : null,
+          championTeamName: champion ? champion.name : 'Unknown',
+          topScorers: enrichedTopScorers,
+        },
+      },
       { upsert: true, new: true }
     );
 
-    if (!achievement) {
-      throw new Error(`Failed to retrieve or create Achievement for season ${season.seasonNumber}`);
-    }
-
-    // Update scorers
-    for (const scorerId of scorers) {
-      const player = await Player.findById(scorerId).populate('team', 'name');
-      if (!player) {
-        console.error(`Player with ID ${scorerId} not found. Skipping.`);
-        continue;
-      }
-      // Atomically update the player's goals
-      await Achievement.updateOne(
-        { season: season._id, 'topScorers.player': { $ne: scorerId } },
-        {
-          $push: {
-            topScorers: {
-              player: player._id,
-              playerName: player.name,
-              goals: 1,
-            },
-          },
-        }
-      );
-
-      await Achievement.updateOne(
-        { season: season._id, 'topScorers.player': scorerId },
-        { $inc: { 'topScorers.$.goals': 1 } }
-      );
-    }
+    console.log(`Achievements saved for season ${season.seasonNumber}`);
   } catch (error) {
     console.error('Error saving achievements:', error.message);
     throw new Error('Failed to save achievements.');

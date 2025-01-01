@@ -4,10 +4,15 @@ const router = express.Router();
 const saveAchievement = require('../utils/saveAchievement');
 const Fixture = require('../models/Fixture');
 
+// Aktif sezonu getir
+const getActiveSeason = async () => {
+  return await Season.findOne({ isCompleted: false });
+};
+
 // Aktif sezonu dönen API
 router.get('/active', async (req, res) => {
   try {
-    const activeSeason = await Season.findOne({ isCompleted: false });
+    const activeSeason = await getActiveSeason();
 
     if (!activeSeason) {
       return res.status(404).json({ message: 'No active season found.' });
@@ -27,14 +32,19 @@ router.get('/active', async (req, res) => {
 // Aktif sezonu pasif hale getiren API
 router.put('/deactivate', async (req, res) => {
   try {
-    const activeSeason = await Season.findOne({ isCompleted: false });
+    const activeSeason = await getActiveSeason();
 
     if (!activeSeason) {
       return res.status(404).json({ message: 'No active season found to deactivate.' });
     }
 
-    // Sezonun tüm maçlarının oynanıp oynanmadığını kontrol et
+    // Sezonun fikstürünü kontrol et
     const fixture = await Fixture.findOne({ season: activeSeason._id });
+    if (!fixture) {
+      return res.status(404).json({ message: `No fixture found for Season ${activeSeason.seasonNumber}.` });
+    }
+
+    // Oynanmamış maçları kontrol et
     const unplayedMatches = fixture.matches.filter(
       (match) => match.homeScore === null && match.awayScore === null
     );
@@ -46,14 +56,19 @@ router.put('/deactivate', async (req, res) => {
     }
 
     // Başarıları kaydet
-    await saveAchievement(activeSeason);
+    try {
+      await saveAchievement(activeSeason);
+    } catch (achievementError) {
+      console.error('Error saving achievements:', achievementError.message);
+      return res.status(500).json({ error: 'Failed to save achievements for the season.' });
+    }
 
-    // Aktif sezonu pasif hale getir
+    // Aktif sezonu tamamlanmış olarak işaretle
     activeSeason.isCompleted = true;
     await activeSeason.save();
 
     res.json({
-      message: `Season ${activeSeason.seasonNumber} has been deactivated.`,
+      message: `Season ${activeSeason.seasonNumber} has been deactivated and marked as completed.`,
       season: activeSeason,
     });
   } catch (error) {

@@ -1,16 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const Fixture = require('../models/Fixture');
-const Standing = require('../models/Standing');
 const Season = require('../models/Season');
-const Achievement = require('../models/Achievement');
 const playMatch = require('../utils/playMatch');
 const saveGoal = require('../utils/saveGoal');
 const generateMinutes = require('../utils/generateMinutes');
-const saveAchievement = require('../utils/saveAchievement');
 const Team = require('../models/Team');
 const assignGoals = require('../utils/assignGoals');
-const Player = require('../models/Player');
+const checkAndFinalizeSeason = require('../utils/checkAndFinalizeSeason');
 
 // Tüm maçları oynatan API
 router.post('/play-all-remaining', async (req, res) => {
@@ -37,33 +34,14 @@ router.post('/play-all-remaining', async (req, res) => {
       return res.status(404).json({ error: 'No remaining matches to play in the active season.' });
     }
 
-    const playedMatches = await Promise.all(
+    await Promise.all(
       remainingMatches.map((match) => playMatch(match, activeSeason))
     );
 
-    activeSeason.isCompleted = true;
-    await activeSeason.save();
-
-    const standings = await Standing.find({ season: activeSeason._id })
-      .sort({ points: -1, goalDifference: -1 })
-      .populate('team', 'name');
-
-    if (standings.length > 0) {
-      const championTeam = standings[0].team;
-
-      await Achievement.findOneAndUpdate(
-        { season: activeSeason._id },
-        {
-          $set: { champion: championTeam },
-          $setOnInsert: { season: activeSeason._id, seasonNumber: activeSeason.seasonNumber },
-        },
-        { upsert: true }
-      );
-    }
+    await checkAndFinalizeSeason(activeSeason); // Sezon tamamlanmasını kontrol et
 
     res.json({
-      message: 'All remaining matches for the active season have been played and achievements saved.',
-      playedMatches,
+      message: 'All remaining matches for the active season have been played and season finalized.',
     });
   } catch (error) {
     console.error('Error processing all remaining matches:', error.message);
@@ -151,9 +129,6 @@ router.post('/play-match', async (req, res) => {
     match.awayScore = awayScore;
     await fixture.save();
 
-    await saveAchievement(homeScorers, match, fixture.season);
-    await saveAchievement(awayScorers, match, fixture.season);
-
     res.json({
       message: 'Match played successfully.',
       matchId,
@@ -199,9 +174,6 @@ router.post('/play-match-random', async (req, res) => {
     match.homeScorers = homeScorers;
     match.awayScorers = awayScorers;
     await fixture.save();
-
-    await saveAchievement(homeScorers, match, fixture.season);
-    await saveAchievement(awayScorers, match, fixture.season);
 
     res.json({
       message: 'Match played randomly based on team strengths.',

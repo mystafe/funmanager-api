@@ -1,7 +1,6 @@
 const express = require('express');
 const Achievement = require('../models/Achievement');
 const router = express.Router();
-const Team = require('../models/Team');
 const Season = require('../models/Season');
 const Standing = require('../models/Standing');
 const Player = require('../models/Player');

@@ -6,6 +6,7 @@ const initialTeams = require('../data/initialTeams');
 const initialTrainings = require('../data/initialTrainings');
 const calculateTeamStrength = require('./calculateTeamStrengths');
 const updateFirstEleven = require('./updateFirstEleven');
+const tacticFormation = require('../data/tactics');
 
 const loadInitialData = async () => {
   try {
@@ -30,16 +31,6 @@ const loadInitialData = async () => {
     }
 
     // Tactic formations
-    const tacticFormation = {
-      '4-4-2': { Goalkeeper: 1, Defence: 4, Midfield: 4, Forward: 2 },
-      '3-5-2': { Goalkeeper: 1, Defence: 3, Midfield: 5, Forward: 2 },
-      '4-3-3': { Goalkeeper: 1, Defence: 4, Midfield: 3, Forward: 3 },
-      '3-4-3': { Goalkeeper: 1, Defence: 3, Midfield: 4, Forward: 3 },
-      '4-5-1': { Goalkeeper: 1, Defence: 4, Midfield: 5, Forward: 1 },
-      '4-2-4': { Goalkeeper: 1, Defence: 4, Midfield: 2, Forward: 4 },
-      '5-3-2': { Goalkeeper: 1, Defence: 5, Midfield: 3, Forward: 2 },
-    };
-
     for (const teamData of initialTeams) {
       // Create stadium
       const stadium = new Stadium({
