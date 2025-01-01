@@ -7,16 +7,8 @@ const Standing = require('../models/Standing');
  * @param {Object} season - The active season object.
  */
 const saveStanding = async (match, season) => {
-  console.log('Updating standings...');
   try {
     const { homeTeam, awayTeam, homeScore, awayScore } = match;
-
-    console.log(`Scores: ${homeScore} - ${awayScore}`);
-
-    console.log('----')
-
-    console.log(`Updating standings for match ${homeTeam.name} vs ${awayTeam.name}`);
-    console.log('----')
     // Ensure scores are numbers for calculations
     const homeGoals = parseInt(homeScore, 10) || 0;
     const awayGoals = parseInt(awayScore, 10) || 0;
@@ -61,8 +53,6 @@ const saveStanding = async (match, season) => {
     // Save updated standings
     await homeStanding.save();
     await awayStanding.save();
-
-    console.log(`Standings updated successfully for match ${homeTeam.name} vs ${awayTeam.name}`);
   } catch (error) {
     console.error('Error updating standings:', error.message);
     throw new Error('Failed to update standings.');

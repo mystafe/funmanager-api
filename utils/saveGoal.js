@@ -14,8 +14,6 @@ const Team = require('../models/Team');
  * @param {Number} week - Week number of the match.
  */
 const saveGoal = async (playerId, teamId, matchId, season, minute, week) => {
-
-  console.log('saveGoal seasonNumber', season.seasonNumber);
   try {
     // Fetch player and team details
     const player = await Player.findById(playerId);

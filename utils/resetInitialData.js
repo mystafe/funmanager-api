@@ -31,37 +31,16 @@ const deleteInitialData = async () => {
 
     // Clear all collections
     await Team.deleteMany({});
-    console.log('Teams collection cleared.');
-
     await Player.deleteMany({});
-    console.log('Players collection cleared.');
-
-    await Fixture.deleteMany({});
-    console.log('Fixtures collection cleared.');
-
     await Season.deleteMany({});
-    console.log('Seasons collection cleared.');
-
-    await Stadium.deleteMany({});
-    console.log('Stadiums collection cleared.');
-
-    await Sponsor.deleteMany({});
-    console.log('Sponsors collection cleared.');
-
-    await Standing.deleteMany({});
-    console.log('Standings collection cleared.');
-
+    await Fixture.deleteMany({});
     await MatchResult.deleteMany({});
-    console.log('Match results collection cleared.');
-
+    await Standing.deleteMany({});
     await Goal.deleteMany({});
-    console.log('Goals collection cleared.');
-
     await Achievement.deleteMany({});
-    console.log('Achievements collection cleared.');
-
     await Training.deleteMany({});
-    console.log('Trainings collection cleared.');
+    await Sponsor.deleteMany({});
+    await Stadium.deleteMany({});
 
     console.log('Database cleared successfully.');
 

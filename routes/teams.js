@@ -2,6 +2,7 @@ const express = require('express');
 const Team = require('../models/Team');
 const Player = require('../models/Player');
 const router = express.Router();
+const updateFirstEleven = require('../utils/updateFirstEleven');
 
 // Tüm takımların güçlerini dönen endpoint
 router.get('/powers', async (req, res) => {
@@ -50,5 +51,16 @@ router.get('/teams', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch teams.' });
   }
 });
+
+//ilk 11'i güncelleyen endpoint // use updateFirstEleven function
+router.get('/update-first-eleven', async (req, res) => {
+  try {
+    await updateFirstEleven(req, res);
+  } catch (error) {
+    console.error('Error in /update-first-eleven:', error.message);
+    res.status(500).json({ error: 'Failed to update first eleven players.' });
+  }
+});
+
 
 module.exports = router;
