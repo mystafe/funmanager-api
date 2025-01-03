@@ -1,6 +1,7 @@
 const Team = require('../models/Team');
 const Player = require('../models/Player');
 const tacticFormation = require('../data/tactics');
+const determineFirstEleven = require('./determineFirstEleven');
 
 /**
  * Güncel tüm takımların ilk 11 oyuncularını taktiğe göre günceller.
@@ -15,6 +16,7 @@ const updateFirstEleven = async (req, res) => {
       const tactic = tacticFormation[team.defaultTactic] || tacticFormation['4-4-2'];
       const { playersInFirstEleven, playersOnBench, totalStrength } = determineFirstEleven(team.players, tactic);
 
+      // Tüm oyuncuların durumlarını sıfırla
       await Player.updateMany(
         { _id: { $in: team.players.map((p) => p._id) } },
         { isFirstEleven: false, isMatchSquad: false }
@@ -28,17 +30,29 @@ const updateFirstEleven = async (req, res) => {
         { isMatchSquad: true }
       );
 
+      // Takım bilgilerini güncelle
       team.playersInFirstEleven = playersInFirstEleven.map((p) => p._id);
       team.playersOnBench = playersOnBench.map((p) => p._id);
-      team.attackStrength = totalStrength;
-      team.defenseStrength = totalStrength;
+      team.attackStrength = totalStrength.attack; // Toplam hücum gücü
+      team.defenseStrength = totalStrength.defense; // Toplam defans gücü
       await team.save();
 
+      // Dönen sonucu detaylandır
       result.push({
         teamName: team.name,
-        firstEleven: playersInFirstEleven.map((p) => ({ id: p._id, name: p.name })),
-        bench: playersOnBench.map((p) => ({ id: p._id, name: p.name })),
-        totalStrength,
+        totalStrength: totalStrength, // Takımın toplam gücü (hücum ve savunma)
+        firstEleven: playersInFirstEleven.map((p) => ({
+          id: p._id,
+          name: p.name,
+          position: p.position,
+          strength: p.strength, // Bireysel güç
+        })),
+        bench: playersOnBench.map((p) => ({
+          id: p._id,
+          name: p.name,
+          position: p.position,
+          strength: p.strength, // Bireysel güç
+        })),
       });
     }
 

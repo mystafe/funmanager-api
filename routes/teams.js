@@ -1,6 +1,6 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const Team = require('../models/Team');
-const Player = require('../models/Player');
 const router = express.Router();
 const updateFirstEleven = require('../utils/updateFirstEleven');
 const calculateTeamStrengths = require('../utils/calculateTeamStrengths');
@@ -65,10 +65,7 @@ router.get('/update-first-eleven', async (req, res) => {
 });
 
 
-/**
- * API to calculate and update team strengths.
- * Returns the updated team strengths as JSON response.
- */
+/*** API to calculate and update team strengths. Returns the updated team strengths as JSON response. */
 router.get('/update-team-strength', async (req, res) => {
   try {
     const teamStrengths = await calculateTeamStrengths();
@@ -86,5 +83,42 @@ router.get('/update-team-strength', async (req, res) => {
     res.status(500).json({ error: 'Failed to update team strengths.' });
   }
 });
+
+
+/**
+ * Updates the default tactic for a team.
+ * @route POST /update-tactic/:teamId
+ * @param {String} teamId - The ID of the team to update.
+ * @param {Object} req.body - The request body containing the new tactic.
+ * @returns {Object} - Updated team object or error message.
+ */
+router.post('/update-tactic/:teamId', async (req, res) => {
+  const { teamId } = req.params;
+  const { defaultTactic } = req.body;
+
+  if (!teamId || !defaultTactic) {
+    return res.status(400).json({ error: 'Missing required parameters.' });
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(teamId)) {
+    return res.status(400).json({ error: 'Invalid team ID.' });
+  }
+
+  try {
+    const team = await Team.findByIdAndUpdate(teamId, { defaultTactic }, { new: true });
+
+    if (!team) {
+      return res.status(404).json({ error: 'Team not found.' });
+    }
+
+    res.json(team);
+  } catch (error) {
+    console.error('Error updating team tactic:', error.message);
+    res.status(500).json({ error: 'Failed to update team tactic.' });
+  }
+}
+);
+
+
 
 module.exports = router;
